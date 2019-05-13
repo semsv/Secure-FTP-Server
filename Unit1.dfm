@@ -69,36 +69,4 @@ object Form1: TForm1
     Value = 21
     OnChange = SpinEdit1Change
   end
-  object IdFTPServer1: TIdFTPServer
-    OnStatus = IdFTPServer1Status
-    Bindings = <>
-    CommandHandlers = <>
-    DefaultPort = 21
-    Greeting.NumericCode = 220
-    Greeting.Text.Strings = (
-      'Indy FTP Server ready.')
-    Greeting.TextCode = '220'
-    MaxConnectionReply.NumericCode = 0
-    OnConnect = IdFTPServer1Connect
-    OnDisconnect = IdFTPServer1Disconnect
-    ReplyExceptionCode = 0
-    ReplyTexts = <>
-    ReplyUnknownCommand.NumericCode = 500
-    ReplyUnknownCommand.Text.Strings = (
-      'Syntax error, command unrecognized.')
-    ReplyUnknownCommand.TextCode = '500'
-    AnonymousAccounts.Strings = (
-      'anonymous'
-      'ftp'
-      'guest')
-    EmulateSystem = ftpsUNIX
-    SystemType = 'WIN32'
-    OnChangeDirectory = IdFTPServer1ChangeDirectory
-    OnUserLogin = IdFTPServer1UserLogin
-    OnListDirectory = IdFTPServer1ListDirectory
-    OnRetrieveFile = IdFTPServer1RetrieveFile
-    OnStoreFile = IdFTPServer1StoreFile
-    Left = 8
-    Top = 16
-  end
 end

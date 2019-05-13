@@ -9,7 +9,6 @@ uses
 
 type
   TForm1 = class(TForm)
-    IdFTPServer1: TIdFTPServer;
     Button1: TButton;
     Button2: TButton;
     ListBox1: TListBox;
@@ -40,6 +39,7 @@ type
     { Private declarations }
   public
     { Public declarations }
+    IdFTPServer1 : TIdFTPServer;
   end;
 
   var
@@ -50,6 +50,8 @@ implementation
   Var
     RootPath      : string;
     vConnectCount : integer;
+    vDataPort     : integer;
+    vPort         : integer;
 
 function replace_chr(schr, dchr : CHAR; InStr : String) : String;
   Var
@@ -153,6 +155,21 @@ end;
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
+  if Assigned(IdFTPServer1) then
+  begin
+    IdFTPServer1.Destroy;
+    IdFTPServer1 := nil;
+  end;
+  IdFTPServer1 := TIdFTPServer.Create(self);
+  IdFTPServer1.DefaultDataPort := vDataPort;
+  IdFTPServer1.DefaultPort     := vPort;
+  IdFTPServer1.OnConnect         := IdFTPServer1Connect;
+  IdFTPServer1.OnUserLogin       := IdFTPServer1UserLogin;
+  IdFTPServer1.OnChangeDirectory := IdFTPServer1ChangeDirectory;
+  IdFTPServer1.OnListDirectory   := IdFTPServer1ListDirectory;
+  IdFTPServer1.OnRetrieveFile    := IdFTPServer1RetrieveFile;
+  IdFTPServer1.OnStoreFile       := IdFTPServer1StoreFile;
+
   IdFTPServer1.Active := true;
   Button1.Enabled     := not IdFTPServer1.Active;
   Button2.Enabled     := IdFTPServer1.Active;
@@ -160,9 +177,15 @@ end;
 
 procedure TForm1.Button2Click(Sender: TObject);
 begin
-  IdFTPServer1.Active := false;
-  Button1.Enabled     := not IdFTPServer1.Active;
-  Button2.Enabled     := IdFTPServer1.Active;
+  if Assigned(IdFTPServer1) then
+  begin
+    IdFTPServer1.Active := false;
+    Application.ProcessMessages;
+    IdFTPServer1        := nil;
+  end;
+  Button1.Enabled     := true;
+  Button2.Enabled     := false;
+  vConnectCount       := 0;
 end;
 
 procedure TForm1.IdFTPServer1Status(ASender: TObject;
@@ -174,6 +197,8 @@ end;
 procedure TForm1.IdFTPServer1Connect(AThread: TIdPeerThread);
 begin
   form1.Caption := 'OnConnect';
+
+  Listbox1.Items.Add( 'OnConnect: ' +   AThread.Connection.Socket.SocksInfo.LocalName );
 end;
 
 procedure TForm1.IdFTPServer1UserLogin(ASender: TIdFTPServerThread;
@@ -203,12 +228,16 @@ end;
 
 procedure TForm1.IdFTPServer1RetrieveFile(ASender: TIdFTPServerThread;
   const AFileName: String; var VStream: TStream);
+  var FileStream : TFileStream;
 begin
   Listbox1.Items.Add('RetrieveFile: ' +  AFileName);
+  FileStream := TFileStream.Create(RootPath + AFileName, fmopenread or fmShareDenyWrite);
+  VStream    := FileStream;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
+  IdFTPServer1 := nil;
   RootPath := edit1.Text;
   if length(RootPath) > 0 then
     if RootPath[length(RootPath)] <> '\' then
@@ -235,28 +264,10 @@ end;
 
 procedure TForm1.SpinEdit1Change(Sender: TObject);
 begin
-  if (vConnectCount <> 0) then
-  begin
-    SpinEdit1.Value  := IdFTPServer1.DefaultPort;
-    exit;
-  end;
-
-  if IdFTPServer1.Active then
-  begin
-    Button2.Click;
-    Application.ProcessMessages;
-  end;
-
   if (Length(SpinEdit1.Text) > 0) then
   begin
-    IdFTPServer1.DefaultPort     := SpinEdit1.Value;
-    IdFTPServer1.DefaultDataPort := 20;
-  end;
-
-  if not IdFTPServer1.Active then
-  begin
-    Button1.Click;
-    Application.ProcessMessages;
+    vPort     := SpinEdit1.Value;
+    vDataPort := SpinEdit1.Value-1;
   end;
 end;
 
