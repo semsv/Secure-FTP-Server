@@ -59,6 +59,7 @@ type
   public
     { Public declarations }
     IdFTPServerX : TIdFTPServer;
+    Procedure CloseAllConnection;
   end;
 
   var
@@ -285,14 +286,31 @@ begin
   Button2.Enabled     := IdFTPServerX.Active;
 end;
 
+procedure TSecureFtpServer.CloseAllConnection;
+begin
+  try
+    if Assigned(IdFTPServerX) then
+    begin
+      IdFTPServerX.TerminateWaitTime := 5000;
+      IdFTPServerX.Active := false;
+      Application.ProcessMessages;
+      sleep(10);
+      while IdFTPServerX.Active do
+      begin
+        Application.ProcessMessages;
+        sleep(100);
+        Application.ProcessMessages;
+      end;
+      IdFTPServerX        := nil;
+    end;
+  except
+    
+  end;
+end;
+
 procedure TSecureFtpServer.Button2Click(Sender: TObject);
 begin
-  if Assigned(IdFTPServerX) then
-  begin
-    IdFTPServerX.Active := false;
-    Application.ProcessMessages;
-    IdFTPServerX        := nil;
-  end;
+  CloseAllConnection;
   Button1.Enabled     := true;
   Button2.Enabled     := false;
   vConnectCount       := 0;

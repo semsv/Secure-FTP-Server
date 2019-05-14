@@ -1,8 +1,8 @@
 object SecureFtpServer: TSecureFtpServer
-  Left = 317
-  Top = 290
+  Left = 250
+  Top = 200
   Width = 1045
-  Height = 612
+  Height = 610
   Caption = 'FTP Server'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -19,13 +19,13 @@ object SecureFtpServer: TSecureFtpServer
     Left = 257
     Top = 0
     Width = 9
-    Height = 530
+    Height = 527
     Beveled = True
     ResizeStyle = rsUpdate
   end
   object Splitter3: TSplitter
     Left = 0
-    Top = 530
+    Top = 527
     Width = 1029
     Height = 3
     Cursor = crVSplit
@@ -35,7 +35,7 @@ object SecureFtpServer: TSecureFtpServer
     Left = 266
     Top = 0
     Width = 763
-    Height = 530
+    Height = 527
     Align = alClient
     Caption = 'Panel2'
     TabOrder = 0
@@ -43,7 +43,7 @@ object SecureFtpServer: TSecureFtpServer
       Left = 409
       Top = 1
       Width = 8
-      Height = 528
+      Height = 525
       Beveled = True
       ResizeStyle = rsUpdate
     end
@@ -51,7 +51,7 @@ object SecureFtpServer: TSecureFtpServer
       Left = 1
       Top = 1
       Width = 408
-      Height = 528
+      Height = 525
       Align = alLeft
       TabOrder = 0
       object Label1: TLabel
@@ -130,7 +130,7 @@ object SecureFtpServer: TSecureFtpServer
       Left = 417
       Top = 1
       Width = 345
-      Height = 528
+      Height = 525
       Align = alClient
       Caption = 'Panel3'
       TabOrder = 1
@@ -140,7 +140,7 @@ object SecureFtpServer: TSecureFtpServer
     Left = 0
     Top = 0
     Width = 257
-    Height = 530
+    Height = 527
     Align = alLeft
     Caption = 'Panel1'
     TabOrder = 1
@@ -148,7 +148,7 @@ object SecureFtpServer: TSecureFtpServer
       Left = 1
       Top = 1
       Width = 255
-      Height = 528
+      Height = 525
       Align = alClient
       ItemHeight = 13
       TabOrder = 0
@@ -156,7 +156,7 @@ object SecureFtpServer: TSecureFtpServer
   end
   object Panel5: TPanel
     Left = 0
-    Top = 533
+    Top = 530
     Width = 1029
     Height = 41
     Align = alBottom
