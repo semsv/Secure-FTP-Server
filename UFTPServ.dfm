@@ -1,7 +1,7 @@
-object Form1: TForm1
-  Left = 249
-  Top = 185
-  Width = 423
+object SecureFtpServer: TSecureFtpServer
+  Left = 222
+  Top = 140
+  Width = 580
   Height = 549
   Caption = 'FTP Server'
   Color = clBtnFace
@@ -52,7 +52,7 @@ object Form1: TForm1
   object Edit1: TEdit
     Left = 88
     Top = 56
-    Width = 313
+    Width = 281
     Height = 21
     TabOrder = 3
     Text = 'C:\SEMEN'
@@ -68,5 +68,49 @@ object Form1: TForm1
     TabOrder = 4
     Value = 21
     OnChange = SpinEdit1Change
+  end
+  object Button3: TButton
+    Left = 373
+    Top = 55
+    Width = 26
+    Height = 22
+    Caption = '...'
+    TabOrder = 5
+    OnClick = Button3Click
+  end
+  object EditKey: TEdit
+    Left = 88
+    Top = 24
+    Width = 281
+    Height = 21
+    TabOrder = 6
+    Text = 'KEYSTR'
+  end
+  object IdFTPServer1: TIdFTPServer
+    Bindings = <>
+    CommandHandlers = <>
+    DefaultPort = 21
+    Greeting.NumericCode = 220
+    Greeting.Text.Strings = (
+      'Indy FTP Server ready.')
+    Greeting.TextCode = '220'
+    MaxConnectionReply.NumericCode = 0
+    ReplyExceptionCode = 0
+    ReplyTexts = <>
+    ReplyUnknownCommand.NumericCode = 500
+    ReplyUnknownCommand.Text.Strings = (
+      'Syntax error, command unrecognized.')
+    ReplyUnknownCommand.TextCode = '500'
+    AnonymousAccounts.Strings = (
+      'anonymous'
+      'ftp'
+      'guest')
+    SystemType = 'WIN32'
+    Left = 40
+    Top = 16
+  end
+  object OpenDialog1: TOpenDialog
+    Left = 8
+    Top = 16
   end
 end
