@@ -91,23 +91,23 @@ begin
     KEY  := ORD(vKeyStr[J + 1]);
     if ((S[I] <> '/') and (S[I] <> '\') and (S[I] <> '.')) then
       begin
-        if (ORD(S[I]) XOR KEY = 0) or
-           (ORD(S[I]) XOR KEY = ORD('/')) or
-           (ORD(S[I]) XOR KEY = ORD('\')) or
-           (ORD(S[I]) XOR KEY = ORD('.')) or
-           (ORD(S[I]) XOR KEY = ORD(' ')) or
-           (ORD(S[I]) XOR KEY = ORD('+')) or
-           (ORD(S[I]) XOR KEY = ORD('-')) or
-           (ORD(S[I]) XOR KEY = ORD('*')) or
-           (ORD(S[I]) XOR KEY = ORD('&')) or
-           (ORD(S[I]) XOR KEY = ORD(':')) or
-           (ORD(S[I]) XOR KEY = ORD(';')) or
-           (ORD(S[I]) XOR KEY = 39) or
-           (ORD(S[I]) XOR KEY = 16) or
-           (ORD(S[I]) XOR KEY = 13) or
-           (ORD(S[I]) XOR KEY = 10)
+        if (ORD(S[I]) XOR KEY = 0)        or (ORD(S[I]) = 0) or
+           (ORD(S[I]) XOR KEY = ORD('/')) or (ORD(S[I]) = ORD('/')) or
+           (ORD(S[I]) XOR KEY = ORD('\')) or (ORD(S[I]) = ORD('\')) or
+           (ORD(S[I]) XOR KEY = ORD('.')) or (ORD(S[I]) = ORD('.')) or
+           (ORD(S[I]) XOR KEY = ORD(' ')) or (ORD(S[I]) = ORD(' ')) or
+           (ORD(S[I]) XOR KEY = ORD('+')) or (ORD(S[I]) = ORD('+')) or
+           (ORD(S[I]) XOR KEY = ORD('-')) or (ORD(S[I]) = ORD('-')) or
+           (ORD(S[I]) XOR KEY = ORD('*')) or (ORD(S[I]) = ORD('*')) or
+           (ORD(S[I]) XOR KEY = ORD('&')) or (ORD(S[I]) = ORD('&')) or
+           (ORD(S[I]) XOR KEY = ORD(':')) or (ORD(S[I]) = ORD(':')) or
+           (ORD(S[I]) XOR KEY = ORD(';')) or (ORD(S[I]) = ORD(';')) or
+           (ORD(S[I]) XOR KEY = 39)       or (ORD(S[I]) = 39) or
+           (ORD(S[I]) XOR KEY = 16)       or (ORD(S[I]) = 16) or
+           (ORD(S[I]) XOR KEY = 13)       or (ORD(S[I]) = 13) or
+           (ORD(S[I]) XOR KEY = 10)       or (ORD(S[I]) = 10)
         then
-          S[I] := S[I] else
+        else
           S[I] := CHR(ORD(S[I]) XOR KEY);
       end;
   end;
@@ -318,7 +318,7 @@ begin
   while pos('\', curr_path) > 0 do
    delete(curr_path, 1, pos('\', curr_path));
   VDirectory := curr_path;
-  Listbox1.Items.Add('ChangeDirectory: ' + '"' + VDirectory + '"' + '; UserName: ' + '"' + ASender.Username + '"');
+  Listbox1.Items.Add('ChangeDirectory: ' + '"' + decrypt_path_dir( curr_path ) + '"' + '; UserName: ' + '"' + ASender.Username + '"');
 end;
 
 procedure TSecureFtpServer.IdFTPServerXStoreFile(ASender: TIdFTPServerThread;
@@ -330,9 +330,18 @@ end;
 procedure TSecureFtpServer.IdFTPServerXRetrieveFile(ASender: TIdFTPServerThread;
   const AFileName: String; var VStream: TStream);
   var FileStream : TFileStream;
+  var
+   path_dir  : string;
+   vLocFileN : string;
 begin
-  Listbox1.Items.Add('RetrieveFile: ' +  AFileName);
-  FileStream := TFileStream.Create(RootPath + AFileName, fmopenread or fmShareDenyWrite);
+  path_dir  := decrypt_path_dir( AFileName );
+  vLocFileN := AFileName;
+  while ((pos('/', vLocFileN) > 0) and (pos('/', vLocFileN) <> length(vLocFileN))) do
+    delete(vLocFileN, 1, pos('/', vLocFileN));
+  vLocFileN := path_dir + encrypt_string( vLocFileN );
+
+  Listbox1.Items.Add('RetrieveFile: ' + RootPath +  vLocFileN );
+  FileStream := TFileStream.Create(RootPath + vLocFileN, fmopenread or fmShareDenyWrite);
   VStream    := FileStream;
 end;
 
