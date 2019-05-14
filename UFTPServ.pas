@@ -8,20 +8,29 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, IdBaseComponent, IdComponent, IdTCPServer, IdFTPServer, IdFTPList,
-  StdCtrls, Spin;
+  StdCtrls, Spin, ExtCtrls;
 
 type
   TSecureFtpServer = class(TForm)
+    Panel1: TPanel;
+    ListBox1: TListBox;
+    IdFTPServer1: TIdFTPServer;
+    OpenDialog1: TOpenDialog;
+    Splitter1: TSplitter;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    Label1: TLabel;
+    Splitter2: TSplitter;
     Button1: TButton;
     Button2: TButton;
-    ListBox1: TListBox;
     Edit1: TEdit;
     SpinEdit1: TSpinEdit;
-    Label1: TLabel;
-    IdFTPServer1: TIdFTPServer;
     Button3: TButton;
-    OpenDialog1: TOpenDialog;
     EditKey: TEdit;
+    Button4: TButton;
+    Panel4: TPanel;
+    Panel5: TPanel;
+    Splitter3: TSplitter;
     procedure IdFTPServerXListDirectory(ASender: TIdFTPServerThread;
       const APath: String; ADirectoryListing: TIdFTPListItems);
     procedure Button1Click(Sender: TObject);
