@@ -62,6 +62,7 @@ type
       const ARenameFromFile, ARenameToFile: String);
     procedure Button3Click(Sender: TObject);
     procedure EditKeyChange(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
   private
     { Private declarations }
     function check_init_server_path (FileName : String) : boolean;
@@ -71,12 +72,15 @@ type
     { Public declarations }
     IdFTPServerX : TIdFTPServer;
     Procedure CloseAllConnection;
+    procedure generate_key;
   end;
 
   var
     SecureFtpServer: TSecureFtpServer;
 
 implementation
+
+uses MaskUtils;
 {$R *.dfm}
   Var
     RootPath      : string;
@@ -138,12 +142,70 @@ begin
   result := s;
 end;
 
+function check_controlsum_key(vkey : string) : boolean;
+  var
+    r         : string;
+    i         : integer;
+    cntrlsum  : DWORD;
+    value     : DWORD;
+    cmpsumstr : string;
+begin
+  cntrlsum     := 0;
+  r            := copy(replace_chr('-', chr(0), vkey),  1, 4*5);
+  cmpsumstr    := copy(replace_chr('-', chr(0), vkey), 21, 1*5);
+  result       := false;
+  if Length(vkey) <> 25 then exit;
+  For I := 1 to 4 do
+   begin
+     value    := StrToInt(Copy(r, (i-1)*5 + 1, 5));
+     cntrlsum := cntrlsum + value xor $AA;
+   end;
+  result := (Copy(Inttostr(cntrlsum), 1, 5) = cmpsumstr);
+end;
+
+procedure TSecureFtpServer.generate_key;
+  var
+    s        : string;
+    r        : string;
+    a        : byte;
+    i        : integer;
+    value    : DWORD;
+    cntrlsum : DWORD;
+begin
+{}
+  Randomize;
+  for i:= 1 to 4 do
+  begin
+    a := Random(65535);
+    r := inttostr(a);
+    r := FormatMaskText('00000', r);
+    r := replace_chr(' ', '0', r);
+    WHILE (POS('0', r) > 0)
+      do r[POS('0', r)] := inttostr(Random(65535))[1];
+    s := s + r;
+    if I < 4
+     then
+       s := s + '-';
+  end;
+  cntrlsum     := 0;
+  r            := replace_chr('-', chr(0), s);
+  For I := 1 to 4 do
+   begin
+     value    := StrToInt(Copy(r, (i-1)*5 + 1, 5));
+     cntrlsum := cntrlsum + value xor $AA;
+   end;
+  EditKey.Text := s + '-' + Copy(Inttostr(cntrlsum), 1, 5);
+{}
+end;
+
+
 function TSecureFtpServer.check_init_server_key : boolean;
 begin
   vKeyStr                        := EditKey.text;
   vKeyStr :=                      replace_chr(' ', chr(0), vKeyStr);
   vKeyStr :=                      replace_chr('-', chr(0), vKeyStr);
-  if Length(replace_chr('0', chr(0), vKeyStr)) > 0
+  if (Length(replace_chr('0', chr(0), vKeyStr)) > 0)  and
+     check_controlsum_key(vKeyStr)
    then
      Shape1.Brush.Color := cllime else
   if Length(vKeyStr) = 0
@@ -185,7 +247,10 @@ begin
            (ORD(S[I]) XOR KEY = 39)       or (ORD(S[I]) = 39) or
            (ORD(S[I]) XOR KEY = 16)       or (ORD(S[I]) = 16) or
            (ORD(S[I]) XOR KEY = 13)       or (ORD(S[I]) = 13) or
-           (ORD(S[I]) XOR KEY = 10)       or (ORD(S[I]) = 10)
+           (ORD(S[I]) XOR KEY = 10)       or (ORD(S[I]) = 10) or
+           (ORD(S[I]) XOR KEY = 46)       or (ORD(S[I]) = 46) or
+           (ORD(S[I]) XOR KEY = 09)       or (ORD(S[I]) = 09) or
+           (LENGTH( CHR( ORD(S[I]) XOR KEY ) ) = 0)
         then
         else
           S[I] := CHR(ORD(S[I]) XOR KEY);
@@ -514,6 +579,11 @@ end;
 procedure TSecureFtpServer.EditKeyChange(Sender: TObject);
 begin
   check_init_server_key;
+end;
+
+procedure TSecureFtpServer.Button4Click(Sender: TObject);
+begin
+  generate_key;
 end;
 
 end.

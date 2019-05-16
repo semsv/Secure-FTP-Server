@@ -168,16 +168,17 @@ object SecureFtpServer: TSecureFtpServer
           Height = 22
           Caption = '...'
           TabOrder = 5
+          OnClick = Button4Click
         end
         object EditKey: TMaskEdit
           Left = 60
           Top = 17
-          Width = 288
+          Width = 294
           Height = 21
-          EditMask = '99999\-99999\-99999\-99999;1;_'
-          MaxLength = 23
+          EditMask = '99999\-99999\-99999\-99999\-99999;1;_'
+          MaxLength = 29
           TabOrder = 6
-          Text = '     -     -     -     '
+          Text = '     -     -     -     -     '
           OnChange = EditKeyChange
         end
       end
