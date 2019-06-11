@@ -8,6 +8,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, IdBaseComponent, IdComponent, IdTCPServer, IdFTPServer, IdFTPList,
+  IdHashCRC, Idglobal,
   StdCtrls, Spin, ExtCtrls, Mask;
 
 type
@@ -68,6 +69,8 @@ type
     function check_init_server_path (FileName : String) : boolean;
     function check_init_server_work : boolean;
     function check_init_server_key : boolean;
+    function TranslatePath( const APathname, homeDir: string ) : string;
+    procedure IdFTPServerXCommandXCRC( ASender: TIdCommand ) ;
   public
     { Public declarations }
     IdFTPServerX : TIdFTPServer;
@@ -88,6 +91,45 @@ uses MaskUtils;
     vDataPort     : integer;
     vPort         : integer;
     vKeyStr       : string;
+
+function CalculateCRC( const path: string ) : string;
+var
+  f: tfilestream;
+  value: dword;
+  IdHashCRC32: TIdHashCRC32;
+begin
+  IdHashCRC32 := nil;
+  f := nil;
+  try
+    IdHashCRC32 := TIdHashCRC32.create;
+    f := TFileStream.create( path, fmOpenRead or fmShareDenyWrite ) ;
+    value := IdHashCRC32.HashValue( f ) ;
+    result := inttohex( value, 8 ) ;
+  finally
+    f.free;
+    IdHashCRC32.free;
+  end;
+end;
+
+procedure TSecureFtpServer.IdFTPServerXCommandXCRC( ASender: TIdCommand ) ;
+// note, this is made up, and not defined in any rfc.
+var
+  s: string;
+begin
+  with TIdFTPServerThread( ASender.Thread ) do
+  begin
+    if Authenticated then
+    begin
+      try
+        s := ProcessPath( CurrentDir, ASender.UnparsedParams ) ;
+        s := TransLatePath( s, TIdFTPServerThread( ASender.Thread ) .HomeDir ) ;
+        ASender.Reply.SetReply( 213, CalculateCRC( s ) ) ;
+      except
+        ASender.Reply.SetReply( 500, 'file error' ) ;
+      end;
+    end;
+  end;
+end;
 
 function TSecureFtpServer.check_init_server_path (FileName : String) : boolean;
   Var
@@ -408,6 +450,11 @@ begin
   IdFTPServerX.OnStoreFile       := IdFTPServerXStoreFile;
   IdFTPServerX.OnStatus          := IdFTPServerXStatus;
   IdFTPServerX.OnRenameFile      := IdFTPServerXRenameFile;
+  with IdFTPServerX.CommandHandlers.add do
+  begin
+    Command := 'XCRC';
+    OnCommand := IdFTPServerXCommandXCRC;
+  end;
   check_init_server_path(edit1.Text);
   check_init_server_work;
   check_init_server_key;
@@ -491,10 +538,64 @@ begin
   Listbox1.Items.Add('ChangeDirectory: ' + '"' + decrypt_path_dir( curr_path ) + '"' + '; UserName: ' + '"' + ASender.Username + '"');
 end;
 
+function TSecureFtpServer.TranslatePath( const APathname, homeDir: string ) : string;
+function SlashToBackSlash( const str: string ) : string;
+var
+  a: dword;
+begin
+  result := str;
+  for a := 1 to length( result ) do
+    if result[a] = '/' then
+      result[a] := '\';
+end;
+var
+  tmppath: string;
+begin
+  result := SlashToBackSlash( homeDir ) ;
+  tmppath := SlashToBackSlash( APathname ) ;
+  if homedir = '/' then
+  begin
+    result := tmppath;
+    exit;
+  end;
+
+  if length( APathname ) = 0 then
+    exit;
+  if result[length( result ) ] = '\' then
+    result := copy( result, 1, length( result ) - 1 ) ;
+
+  if length(tmppath) > 0 then
+  begin
+    if tmppath[1] <> '\' then
+      result := result + '\';
+  end else
+    result := result + '\';
+    
+  result := result + tmppath;
+end;
+
 procedure TSecureFtpServer.IdFTPServerXStoreFile(ASender: TIdFTPServerThread;
   const AFileName: String; AAppend: Boolean; var VStream: TStream);
+  var
+   path_dir  : string;
+   vLocFileN : string;
+   FileName  : String;
 begin
-  Listbox1.Items.Add('StoreFile: ' + '"' + AFileName + '"');
+  path_dir  := decrypt_path_dir( AFileName );
+  vLocFileN := AFileName;
+  while ((pos('/', vLocFileN) > 0) and (pos('/', vLocFileN) <> length(vLocFileN))) do
+    delete(vLocFileN, 1, pos('/', vLocFileN));
+  vLocFileN := path_dir + decrypt_string( vLocFileN );
+  FileName  := RootPath +  vLocFileN;
+
+  Listbox1.Items.Add('StoreFile: ' + '"' + FileName + '"');
+  if FileExists( FileName ) and AAppend then
+  begin
+    VStream := TFileStream.create(FileName, fmOpenWrite or fmShareExclusive);
+    VStream.Seek( 0, soFromEnd ) ;
+  end
+  else
+    VStream := TFileStream.create(FileName, fmCreate or fmShareExclusive );
 end;
 
 procedure TSecureFtpServer.IdFTPServerXRetrieveFile(ASender: TIdFTPServerThread;
