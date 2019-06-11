@@ -341,7 +341,7 @@ procedure TSecureFtpServer.IdFTPServerXListDirectory(ASender: TIdFTPServerThread
   begin
     listitem := aDirectoryListing.Add;
     listitem.ItemType         := ItemType;
-    listitem.FileName         := AnsiToUtf8(Filename);
+    listitem.FileName         := Filename;
     listitem.OwnerName        := 'anonymous';
     listitem.GroupName        := 'all';
     listitem.OwnerPermissions := 'rwx';
