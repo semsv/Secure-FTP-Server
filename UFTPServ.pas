@@ -332,11 +332,15 @@ begin
      begin
        if (f.attr and faDirectory) = faDirectory then
          begin
-           Item              := ADirectoryListing.Add;
-           Item.Size         := F.Size;
-           Item.ModifiedDate := FileDateToDateTime(F.Time);
-           Item.FileName     := encrypt_string(F.Name);
-           Item.ItemType     := ditDirectory;
+           Item                      := ADirectoryListing.Add;
+           Item.Size                 := Int64(F.FindData.nFileSizeHigh) shl Int64(32) + Int64(F.FindData.nFileSizeLow);
+           Item.ModifiedDate         := FileDateToDateTime(F.Time);
+           Item.FileName             := encrypt_string(F.Name);
+           Item.ItemType             := ditDirectory;
+           Item.GroupName            := 'all';
+           Item.OwnerPermissions     := 'rwx';
+           Item.GroupPermissions     := 'rwx';
+           Item.UserPermissions      := 'rwx';
          end;
        res := FindNext(F);
      end;
@@ -348,11 +352,15 @@ begin
           (F.Name <> '.') and
           (F.Name <> '..') then
          begin
-           Item              := ADirectoryListing.Add;
-           Item.FileName     := encrypt_string(F.Name);
-           Item.Size         := F.Size;
-           Item.ModifiedDate := FileDateToDateTime(F.Time);
-           Item.ItemType     := ditFile;
+           Item                  := ADirectoryListing.Add;
+           Item.FileName         := encrypt_string(F.Name);
+           Item.Size             := Int64(F.FindData.nFileSizeHigh) shl Int64(32) + Int64(F.FindData.nFileSizeLow);
+           Item.ModifiedDate     := FileDateToDateTime(F.Time);
+           Item.ItemType         := ditFile;
+           Item.GroupName        := 'all';
+           Item.OwnerPermissions := 'rwx';
+           Item.GroupPermissions := 'rwx';
+           Item.UserPermissions  := 'rwx';
          end;
        res := FindNext(F);
      end;
@@ -368,11 +376,15 @@ begin
             (F.Name <> '.') and
             (F.Name <> '..') then
         begin
-          Item := ADirectoryListing.Add;
-          Item.Size     := F.Size;
-          Item.FileName := encrypt_foldername(RootPath + curr_path, F.Name);
-          Item.ModifiedDate := FileDateToDateTime(F.Time);
-          Item.ItemType := ditDirectory;
+          Item                  := ADirectoryListing.Add;
+          Item.Size             := Int64(F.FindData.nFileSizeHigh) shl Int64(32) + Int64(F.FindData.nFileSizeLow);
+          Item.FileName         := encrypt_foldername(RootPath + curr_path, F.Name);
+          Item.ModifiedDate     := FileDateToDateTime(F.Time);
+          Item.ItemType         := ditDirectory;
+          Item.GroupName        := 'all';
+          Item.OwnerPermissions := 'rwx';
+          Item.GroupPermissions := 'rwx';
+          Item.UserPermissions  := 'rwx';
         end;
         res := FindNext(F);
       end;
@@ -385,10 +397,14 @@ begin
           (F.Name <> '..') then
          begin
            Item := ADirectoryListing.Add;
-           Item.FileName     := encrypt_string(F.Name);
-           Item.Size         := F.Size;
-           Item.ModifiedDate := FileDateToDateTime(F.Time);
-           Item.ItemType     := ditFile;
+           Item.FileName         := encrypt_string(F.Name);
+           Item.Size             := Int64(F.FindData.nFileSizeHigh) shl Int64(32) + Int64(F.FindData.nFileSizeLow);
+           Item.ModifiedDate     := FileDateToDateTime(F.Time);
+           Item.ItemType         := ditFile;
+           Item.GroupName        := 'all';
+           Item.OwnerPermissions := 'rwx';
+           Item.GroupPermissions := 'rwx';
+           Item.UserPermissions  := 'rwx';
          end;
        res := FindNext(F);
      end;
