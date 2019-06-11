@@ -315,57 +315,52 @@ begin
   result := result_path;
 end;
 
+function GetFileSize_Int64(FileName : string) : Int64;
+ Var
+   hFile : Cardinal;
+   LSize : Cardinal;
+   HSize : Cardinal;
+begin
+ result := 0;
+ hFile := CreateFile(PChar(FileName),
+        GENERIC_READ or GENERIC_WRITE, FILE_SHARE_READ, nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL, 0);
+ if hFile <> INVALID_HANDLE_VALUE then
+ begin
+   LSize := windows.GetFileSize(hFile, @HSize);
+   FileClose(hFile);
+   result := LSize + (HSize shl 32);
+ end;
+end;
+
 procedure TSecureFtpServer.IdFTPServerXListDirectory(ASender: TIdFTPServerThread;
   const APath: String; ADirectoryListing: TIdFTPListItems);
+
+  procedure AddlistItem( aDirectoryListing: TIdFTPListItems; Filename: string; ItemType: TIdDirItemType; size: int64; date: tdatetime ) ;
   var
-    Item           : TIdFTPListItem;
+    listitem: TIdFTPListItem;
+  begin
+    listitem := aDirectoryListing.Add;
+    listitem.ItemType         := ItemType;
+    listitem.FileName         := AnsiToUtf8(Filename);
+    listitem.OwnerName        := 'anonymous';
+    listitem.GroupName        := 'all';
+    listitem.OwnerPermissions := 'rwx';
+    listitem.GroupPermissions := 'rwx';
+    listitem.UserPermissions  := 'rwx';
+    listitem.Size             := size;
+    listitem.ModifiedDate     := date;
+  end;
+
+  var 
     F              : TSearchRec;
     res            : integer;
     curr_path      : string;
+    fsize          : INT64;
+    fname          : string;
 begin
   Listbox1.Items.Add('ListDirectory: ' +  APath);
   ADirectoryListing.Clear;
-  if APath = '\' then
-  begin
-    res := FindFirst(RootPath + '*', faDirectory, F);
-     while res = 0 do
-     begin
-       if (f.attr and faDirectory) = faDirectory then
-         begin
-           Item                      := ADirectoryListing.Add;
-           Item.Size                 := Int64(F.FindData.nFileSizeHigh) shl Int64(32) + Int64(F.FindData.nFileSizeLow);
-           Item.ModifiedDate         := FileDateToDateTime(F.Time);
-           Item.FileName             := encrypt_string(F.Name);
-           Item.ItemType             := ditDirectory;
-           Item.GroupName            := 'all';
-           Item.OwnerPermissions     := 'rwx';
-           Item.GroupPermissions     := 'rwx';
-           Item.UserPermissions      := 'rwx';
-         end;
-       res := FindNext(F);
-     end;
 
-     res := FindFirst(RootPath + '*', faAnyFile, F);
-     while res = 0 do
-     begin
-       if ((f.attr and faDirectory) <> faDirectory) and
-          (F.Name <> '.') and
-          (F.Name <> '..') then
-         begin
-           Item                  := ADirectoryListing.Add;
-           Item.FileName         := encrypt_string(F.Name);
-           Item.Size             := Int64(F.FindData.nFileSizeHigh) shl Int64(32) + Int64(F.FindData.nFileSizeLow);
-           Item.ModifiedDate     := FileDateToDateTime(F.Time);
-           Item.ItemType         := ditFile;
-           Item.GroupName        := 'all';
-           Item.OwnerPermissions := 'rwx';
-           Item.GroupPermissions := 'rwx';
-           Item.UserPermissions  := 'rwx';
-         end;
-       res := FindNext(F);
-     end;
-  end else
-  begin
     curr_path := decrypt_path_dir(APath);
     SecureFtpServer.ListBox1.Items.Add( 'List Directory: ' + RootPath + curr_path + '*' );
 
@@ -376,15 +371,9 @@ begin
             (F.Name <> '.') and
             (F.Name <> '..') then
         begin
-          Item                  := ADirectoryListing.Add;
-          Item.Size             := Int64(F.FindData.nFileSizeHigh) shl Int64(32) + Int64(F.FindData.nFileSizeLow);
-          Item.FileName         := encrypt_foldername(RootPath + curr_path, F.Name);
-          Item.ModifiedDate     := FileDateToDateTime(F.Time);
-          Item.ItemType         := ditDirectory;
-          Item.GroupName        := 'all';
-          Item.OwnerPermissions := 'rwx';
-          Item.GroupPermissions := 'rwx';
-          Item.UserPermissions  := 'rwx';
+          fname := encrypt_foldername(RootPath + curr_path, F.Name);
+          fsize := GetFileSize_Int64(TranslatePath(curr_path + F.Name, RootPath));
+          AddlistItem( ADirectoryListing, fname, ditDirectory, fsize, FileDateToDateTime( f.Time ) );
         end;
         res := FindNext(F);
       end;
@@ -396,20 +385,13 @@ begin
           (F.Name <> '.') and
           (F.Name <> '..') then
          begin
-           Item := ADirectoryListing.Add;
-           Item.FileName         := encrypt_string(F.Name);
-           Item.Size             := Int64(F.FindData.nFileSizeHigh) shl Int64(32) + Int64(F.FindData.nFileSizeLow);
-           Item.ModifiedDate     := FileDateToDateTime(F.Time);
-           Item.ItemType         := ditFile;
-           Item.GroupName        := 'all';
-           Item.OwnerPermissions := 'rwx';
-           Item.GroupPermissions := 'rwx';
-           Item.UserPermissions  := 'rwx';
+           fname := encrypt_string(F.Name);
+           fsize := GetFileSize_Int64(TranslatePath(curr_path + F.Name, RootPath));
+           AddlistItem( ADirectoryListing, fname, ditFile, fsize, FileDateToDateTime( f.Time ) );
          end;
        res := FindNext(F);
      end;
 
-  end;
 end;
 
 procedure TSecureFtpServer.Button1Click(Sender: TObject);
