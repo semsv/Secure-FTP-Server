@@ -458,6 +458,7 @@ begin
   check_init_server_path(edit1.Text);
   check_init_server_work;
   check_init_server_key;
+  IdFTPServerX.EmulateSystem     := ftpsUNIX;
   IdFTPServerX.Active            := true;
   sleep(1000);
   if IdFTPServerX.Active then
