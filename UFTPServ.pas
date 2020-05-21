@@ -586,6 +586,7 @@ begin
   vLocFileN := AFileName;
   while ((pos('/', vLocFileN) > 0) and (pos('/', vLocFileN) <> length(vLocFileN))) do
     delete(vLocFileN, 1, pos('/', vLocFileN));
+
   vLocFileN := path_dir + decrypt_string( vLocFileN );
   FileName  := RootPath +  vLocFileN;
 
@@ -605,15 +606,28 @@ procedure TSecureFtpServer.IdFTPServerXRetrieveFile(ASender: TIdFTPServerThread;
   var
    path_dir  : string;
    vLocFileN : string;
+   splat     : string;
 begin
-  path_dir  := decrypt_path_dir( AFileName );
+  path_dir  := edit1.text;
   vLocFileN := AFileName;
+
   while ((pos('/', vLocFileN) > 0) and (pos('/', vLocFileN) <> length(vLocFileN))) do
     delete(vLocFileN, 1, pos('/', vLocFileN));
-  vLocFileN := path_dir + decrypt_string( vLocFileN );
 
-  Listbox1.Items.Add('RetrieveFile: ' + RootPath +  vLocFileN );
-  FileStream := TFileStream.Create(RootPath + vLocFileN, fmopenread or fmShareDenyWrite);
+  while ((pos('\', vLocFileN) > 0) and (pos('\', vLocFileN) <> length(vLocFileN))) do
+    delete(vLocFileN, 1, pos('\', vLocFileN));
+
+  while ((pos(' ', vLocFileN) > 0) and (pos(' ', vLocFileN) <> length(vLocFileN))) do
+    delete(vLocFileN, 1, pos(' ', vLocFileN));
+
+  splat := '';  
+  if length(path_dir) >  0 then
+    if path_dir[length(path_dir)] <> '\' then
+      splat := '\';
+  vLocFileN := path_dir + splat + decrypt_string( vLocFileN );
+
+  Listbox1.Items.Add('RetrieveFile: ' + vLocFileN );
+  FileStream := TFileStream.Create(vLocFileN, fmopenread or fmShareDenyWrite);
   VStream    := FileStream;
 end;
 
