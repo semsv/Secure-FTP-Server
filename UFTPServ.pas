@@ -83,7 +83,7 @@ type
 
 implementation
 
-uses MaskUtils;
+uses MaskUtils, UFTPStream;
 {$R *.dfm}
   Var
     RootPath      : string;
@@ -91,6 +91,23 @@ uses MaskUtils;
     vDataPort     : integer;
     vPort         : integer;
     vKeyStr       : string;
+
+function GetFileSize_Int64(FileName : string) : Int64;
+ Var
+   hFile : Cardinal;
+   LSize : Cardinal;
+   HSize : Cardinal;
+begin
+ result := 0;
+ hFile := CreateFile(PChar(FileName),
+        GENERIC_READ or GENERIC_WRITE, FILE_SHARE_READ, nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL, 0);
+ if hFile <> INVALID_HANDLE_VALUE then
+ begin
+   LSize := windows.GetFileSize(hFile, @HSize);
+   FileClose(hFile);
+   result := LSize + (HSize shl 32);
+ end;
+end;
 
 function CalculateCRC( const path: string ) : string;
 var
@@ -357,23 +374,6 @@ begin
   result := result_path;
 end;
 
-function GetFileSize_Int64(FileName : string) : Int64;
- Var
-   hFile : Cardinal;
-   LSize : Cardinal;
-   HSize : Cardinal;
-begin
- result := 0;
- hFile := CreateFile(PChar(FileName),
-        GENERIC_READ or GENERIC_WRITE, FILE_SHARE_READ, nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL, 0);
- if hFile <> INVALID_HANDLE_VALUE then
- begin
-   LSize := windows.GetFileSize(hFile, @HSize);
-   FileClose(hFile);
-   result := LSize + (HSize shl 32);
- end;
-end;
-
 procedure TSecureFtpServer.IdFTPServerXListDirectory(ASender: TIdFTPServerThread;
   const APath: String; ADirectoryListing: TIdFTPListItems);
 
@@ -458,7 +458,6 @@ begin
   check_init_server_path(edit1.Text);
   check_init_server_work;
   check_init_server_key;
-  IdFTPServerX.EmulateSystem     := ftpsUNIX;
   IdFTPServerX.Active            := true;
   sleep(1000);
   if IdFTPServerX.Active then
@@ -586,7 +585,6 @@ begin
   vLocFileN := AFileName;
   while ((pos('/', vLocFileN) > 0) and (pos('/', vLocFileN) <> length(vLocFileN))) do
     delete(vLocFileN, 1, pos('/', vLocFileN));
-
   vLocFileN := path_dir + decrypt_string( vLocFileN );
   FileName  := RootPath +  vLocFileN;
 
@@ -597,7 +595,10 @@ begin
     VStream.Seek( 0, soFromEnd ) ;
   end
   else
-    VStream := TFileStream.create(FileName, fmCreate or fmShareExclusive );
+  begin
+    VStream := TFTP_StoreFileStream.Create(FileName);
+//    VStream := TFileStream.create(FileName, fmCreate or fmShareExclusive );
+  end;
 end;
 
 procedure TSecureFtpServer.IdFTPServerXRetrieveFile(ASender: TIdFTPServerThread;
@@ -606,28 +607,15 @@ procedure TSecureFtpServer.IdFTPServerXRetrieveFile(ASender: TIdFTPServerThread;
   var
    path_dir  : string;
    vLocFileN : string;
-   splat     : string;
 begin
-  path_dir  := edit1.text;
+  path_dir  := decrypt_path_dir( AFileName );
   vLocFileN := AFileName;
-
   while ((pos('/', vLocFileN) > 0) and (pos('/', vLocFileN) <> length(vLocFileN))) do
     delete(vLocFileN, 1, pos('/', vLocFileN));
+  vLocFileN := path_dir + decrypt_string( vLocFileN );
 
-  while ((pos('\', vLocFileN) > 0) and (pos('\', vLocFileN) <> length(vLocFileN))) do
-    delete(vLocFileN, 1, pos('\', vLocFileN));
-
-  while ((pos(' ', vLocFileN) > 0) and (pos(' ', vLocFileN) <> length(vLocFileN))) do
-    delete(vLocFileN, 1, pos(' ', vLocFileN));
-
-  splat := '';  
-  if length(path_dir) >  0 then
-    if path_dir[length(path_dir)] <> '\' then
-      splat := '\';
-  vLocFileN := path_dir + splat + decrypt_string( vLocFileN );
-
-  Listbox1.Items.Add('RetrieveFile: ' + vLocFileN );
-  FileStream := TFileStream.Create(vLocFileN, fmopenread or fmShareDenyWrite);
+  Listbox1.Items.Add('RetrieveFile: ' + RootPath +  vLocFileN );
+  FileStream := TFileStream.Create(RootPath + vLocFileN, fmopenread or fmShareDenyWrite);
   VStream    := FileStream;
 end;
 
