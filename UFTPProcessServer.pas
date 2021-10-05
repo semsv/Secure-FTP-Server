@@ -44,7 +44,7 @@ interface
       procedure Add;                override;
       procedure Clear;              override;
       function  Index    : integer; override;
-      procedure UpdateList; virtual;
+      procedure UpdateList; 
       function  Select(PeerIP : string; PeerPort  : integer) : TFTPConnection;
     end;
 
@@ -176,21 +176,27 @@ end;
 procedure TFTPListConnection.UpdateList;
   var
     I            : Integer;
+    iteration    : Integer;
     IsStopped    : Boolean;
 begin
+  iteration := 0;
   repeat
     IsStopped := false;
     For I := 0 to (FCount - 1) do
     begin
       try
-        IsStopped := Items[I].FAThread.Stopped or not Assigned(Items[I].FAThread.Connection);
+        if Assigned(Items[I].FAThread) then
+          IsStopped := Items[I].FAThread.Stopped or
+                   not Assigned(Items[I].FAThread.Connection);
       finally
         if IsStopped then
           Delete(I);
       end;
       if IsStopped then break;
     end;
-  until not IsStopped;
+    iteration := iteration + 1;
+    if iteration > (FCount - 1) then break;
+  until (IsStopped = false);
 end;
 
 function TFTPListConnection.Select(PeerIP : string; PeerPort  : integer) : TFTPConnection;
@@ -275,7 +281,9 @@ end;
 
 procedure TFTPProcessorServer.FTPServerXDisconnect;
 begin
-  Server.Connections.UpdateList;
+  if Assigned(Server) then
+    if Assigned(Server.Connections) then
+      AThread.Synchronize(Server.Connections.UpdateList);
 end;
 
 function TFTPProcessorServer.FTP_curr(ASender: TIdFTPServerThread) : TFTPConnection;

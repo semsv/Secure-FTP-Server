@@ -260,30 +260,23 @@ begin
     begin
       try
         try
+          IdFTPServerX.TerminateWaitTime := 3000;
           if Assigned(ProcessorServer) then
             ProcessorServer.Destroy;
         except
         end;
       finally
-        IdFTPServerX.OnConnect         := nil;
-        IdFTPServerX.OnUserLogin       := nil;
-        IdFTPServerX.OnChangeDirectory := nil;
-        IdFTPServerX.OnListDirectory   := nil;
-        IdFTPServerX.OnRetrieveFile    := nil;
-        IdFTPServerX.OnStoreFile       := nil;
-        IdFTPServerX.OnStatus          := nil;
-        IdFTPServerX.OnRenameFile      := nil;
-        ProcessorServer                := nil;
         try
           IdFTPServerX.Destroy;
         finally
           IdFTPServerX                   := nil;
-        end;  
+          ProcessorServer                := nil;
+        end;
       end;
     end;
   except
-    on E:Exception do
-      E.Free;
+    on E:Exception do      
+      null;
   end;
 end;
 
