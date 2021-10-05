@@ -2,7 +2,10 @@ program SecureFTPServ;
 
 uses
   Forms,
-  UFTPServ in 'UFTPServ.pas' {SecureFtpServer};
+  UFTPServ in 'UFTPServ.pas' {SecureFtpServer},
+  UFTPStream in 'UFTPStream.pas',
+  UStrCalculate in 'UStrCalculate.pas',
+  UFTPProcessServer in 'UFTPProcessServer.pas';
 
 {$R *.res}
 

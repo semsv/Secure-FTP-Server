@@ -19,13 +19,13 @@ object SecureFtpServer: TSecureFtpServer
     Left = 257
     Top = 0
     Width = 9
-    Height = 528
+    Height = 527
     Beveled = True
     ResizeStyle = rsUpdate
   end
   object Splitter3: TSplitter
     Left = 0
-    Top = 528
+    Top = 527
     Width = 1029
     Height = 3
     Cursor = crVSplit
@@ -35,7 +35,7 @@ object SecureFtpServer: TSecureFtpServer
     Left = 266
     Top = 0
     Width = 763
-    Height = 528
+    Height = 527
     Align = alClient
     Caption = 'Panel2'
     TabOrder = 0
@@ -43,7 +43,7 @@ object SecureFtpServer: TSecureFtpServer
       Left = 409
       Top = 1
       Width = 8
-      Height = 526
+      Height = 525
       Beveled = True
       ResizeStyle = rsUpdate
     end
@@ -51,7 +51,7 @@ object SecureFtpServer: TSecureFtpServer
       Left = 1
       Top = 1
       Width = 408
-      Height = 526
+      Height = 525
       Align = alLeft
       TabOrder = 0
       object Panel6: TPanel
@@ -131,7 +131,7 @@ object SecureFtpServer: TSecureFtpServer
           Text = 'C:\SEMEN'
           OnChange = Edit1Change
         end
-        object Button2: TButton
+        object BtnStop: TButton
           Left = 146
           Top = 79
           Width = 75
@@ -139,7 +139,7 @@ object SecureFtpServer: TSecureFtpServer
           Caption = 'Stop'
           Enabled = False
           TabOrder = 2
-          OnClick = Button2Click
+          OnClick = BtnStopClick
         end
         object SpinEdit1: TSpinEdit
           Left = 268
@@ -187,7 +187,7 @@ object SecureFtpServer: TSecureFtpServer
       Left = 417
       Top = 1
       Width = 345
-      Height = 526
+      Height = 525
       Align = alClient
       Caption = 'Panel3'
       TabOrder = 1
@@ -197,7 +197,7 @@ object SecureFtpServer: TSecureFtpServer
     Left = 0
     Top = 0
     Width = 257
-    Height = 528
+    Height = 527
     Align = alLeft
     Caption = 'Panel1'
     TabOrder = 1
@@ -205,7 +205,7 @@ object SecureFtpServer: TSecureFtpServer
       Left = 1
       Top = 1
       Width = 255
-      Height = 526
+      Height = 525
       Align = alClient
       ItemHeight = 13
       TabOrder = 0
@@ -213,38 +213,21 @@ object SecureFtpServer: TSecureFtpServer
   end
   object Panel5: TPanel
     Left = 0
-    Top = 531
+    Top = 530
     Width = 1029
     Height = 41
     Align = alBottom
     Caption = 'Panel5'
     TabOrder = 2
   end
-  object IdFTPServer1: TIdFTPServer
-    Bindings = <>
-    CommandHandlers = <>
-    DefaultPort = 21
-    Greeting.NumericCode = 220
-    Greeting.Text.Strings = (
-      'Indy FTP Server ready.')
-    Greeting.TextCode = '220'
-    MaxConnectionReply.NumericCode = 0
-    ReplyExceptionCode = 0
-    ReplyTexts = <>
-    ReplyUnknownCommand.NumericCode = 500
-    ReplyUnknownCommand.Text.Strings = (
-      'Syntax error, command unrecognized.')
-    ReplyUnknownCommand.TextCode = '500'
-    AnonymousAccounts.Strings = (
-      'anonymous'
-      'ftp'
-      'guest')
-    SystemType = 'WIN32'
-    Left = 16
-    Top = 152
-  end
   object OpenDialog1: TOpenDialog
-    Left = 56
-    Top = 153
+    Left = 40
+    Top = 9
+  end
+  object Timer1: TTimer
+    Enabled = False
+    OnTimer = Timer1Timer
+    Left = 8
+    Top = 8
   end
 end

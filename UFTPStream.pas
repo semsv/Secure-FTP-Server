@@ -7,7 +7,8 @@ interface
 
   TSWorkMode = (wsmRead, wsmWrite, wsmReget);
 
-  TOnWriteDataEvent = procedure(Count: Longint);
+  TOnWriteDataEvent = procedure(Count: Longint) of object;
+
   TFTP_StoreFileStream = class(TStream)
   private
     FPosition         : Int64;

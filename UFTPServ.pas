@@ -8,14 +8,12 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, IdBaseComponent, IdComponent, IdTCPServer, IdFTPServer, IdFTPList,
-  IdHashCRC, Idglobal,
-  StdCtrls, Spin, ExtCtrls, Mask;
+  Idglobal, UFTPProcessServer, StdCtrls, Mask, Spin, ExtCtrls;
 
 type
   TSecureFtpServer = class(TForm)
     Panel1: TPanel;
     ListBox1: TListBox;
-    IdFTPServer1: TIdFTPServer;
     OpenDialog1: TOpenDialog;
     Splitter1: TSplitter;
     Panel2: TPanel;
@@ -27,7 +25,7 @@ type
     Panel6: TPanel;
     Button1: TButton;
     Edit1: TEdit;
-    Button2: TButton;
+    BtnStop: TButton;
     Label1: TLabel;
     SpinEdit1: TSpinEdit;
     Button3: TButton;
@@ -39,94 +37,89 @@ type
     PathShape: TShape;
     SrvShape: TShape;
     Label4: TLabel;
-    procedure IdFTPServerXListDirectory(ASender: TIdFTPServerThread;
-      const APath: String; ADirectoryListing: TIdFTPListItems);
+    Timer1: TTimer;
     procedure Button1Click(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
-    procedure IdFTPServerXStatus(ASender: TObject;
-      const AStatus: TIdStatus; const AStatusText: String);
-    procedure IdFTPServerXConnect(AThread: TIdPeerThread);
-    procedure IdFTPServerXUserLogin(ASender: TIdFTPServerThread;
-      const AUsername, APassword: String; var AAuthenticated: Boolean);
-    procedure IdFTPServerXChangeDirectory(ASender: TIdFTPServerThread;
-      var VDirectory: String);
-    procedure IdFTPServerXStoreFile(ASender: TIdFTPServerThread;
-      const AFileName: String; AAppend: Boolean; var VStream: TStream);
-    procedure IdFTPServerXRetrieveFile(ASender: TIdFTPServerThread;
-      const AFileName: String; var VStream: TStream);
+    procedure BtnStopClick(Sender: TObject);
+    procedure OnConnect(Connect : TFTPConnection);
+    procedure OnChangeDirectory(var VDirectory: String);
+    procedure OnWriteDataEvent( nCount : Longint);
     procedure FormCreate(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
-    procedure IdFTPServerXDisconnect(AThread: TIdPeerThread);
     procedure SpinEdit1Change(Sender: TObject);
-    procedure IdFTPServerXRenameFile(ASender: TIdFTPServerThread;
-      const ARenameFromFile, ARenameToFile: String);
     procedure Button3Click(Sender: TObject);
     procedure EditKeyChange(Sender: TObject);
     procedure Button4Click(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
   private
     { Private declarations }
+    ProcessorServer : TFTPProcessorServer;
     function check_init_server_path (FileName : String) : boolean;
     function check_init_server_work : boolean;
     function check_init_server_key : boolean;
-    function TranslatePath( const APathname, homeDir: string ) : string;
     procedure IdFTPServerXCommandXCRC( ASender: TIdCommand ) ;
   public
     { Public declarations }
-    IdFTPServerX : TIdFTPServer;
+    IdFTPServerX    : TIdFTPServer;
     Procedure CloseAllConnection;
     procedure generate_key;
   end;
 
   var
-    SecureFtpServer: TSecureFtpServer;
-
+    SecureFtpServer : TSecureFtpServer;
+    VTransferCount  : Int64;
+    
 implementation
 
-uses MaskUtils, UFTPStream;
+uses UFTPStream, UStrCalculate;
+
 {$R *.dfm}
+procedure TSecureFtpServer.OnConnect(Connect : TFTPConnection);
+begin
+  Listbox1.Items.Add( 'OnConnect: ' + Connect.PeerIP );
+  Connect.RootPath := ExtractFilePath(ParamStr(0)) + '[VIRTUAL]\'
+end;
+
+procedure TSecureFtpServer.OnChangeDirectory(var VDirectory: String);
+begin
+  Listbox1.Items.Add('ChangeDirectory: ' + '"' + VDirectory + '"');
+end;
+
+procedure TSecureFtpServer.OnWriteDataEvent( nCount : Longint);
+ var
+   Value : Longint;
+begin
+  VTransferCount := VTransferCount + nCount;
+  if (VTransferCount > 10 * 1024) and (VTransferCount <= 10*1024*1024) then
+  begin
+    Value := Round( VTransferCount / 1024 );
+    SecureFtpServer.Panel5.Caption := IntToStr(Value) + ' K';
+  end
+    else
+  if (VTransferCount > 10*1024*1024) and (VTransferCount <= 1*1024*1024*1024) then
+  begin
+    Value := Round( VTransferCount / 1024 / 1024 );
+    SecureFtpServer.Panel5.Caption := IntToStr(Value) + ' MB';
+  end else
+  if (VTransferCount > 1*1024*1024*1024) then
+  begin
+    Value := Round( VTransferCount / 1024 / 1024 / 1024 );
+    SecureFtpServer.Panel5.Caption := IntToStr(Value) + ' GB';
+  end else
+  if (VTransferCount > 0) and (VTransferCount <= 10 * 1024) then
+  begin
+    SecureFtpServer.Panel5.Caption := IntToStr(VTransferCount) + ' B';
+  end else
+  begin
+    VTransferCount := 0;
+  end;
+end;
+
   Var
     RootPath      : string;
-    vConnectCount : integer;
     vDataPort     : integer;
     vPort         : integer;
     vKeyStr       : string;
-
-function GetFileSize_Int64(FileName : string) : Int64;
- Var
-   hFile : Cardinal;
-   LSize : Cardinal;
-   HSize : Cardinal;
-begin
- result := 0;
- hFile := CreateFile(PChar(FileName),
-        GENERIC_READ or GENERIC_WRITE, FILE_SHARE_READ, nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL, 0);
- if hFile <> INVALID_HANDLE_VALUE then
- begin
-   LSize := windows.GetFileSize(hFile, @HSize);
-   FileClose(hFile);
-   result := LSize + (HSize shl 32);
- end;
-end;
-
-function CalculateCRC( const path: string ) : string;
-var
-  f: tfilestream;
-  value: dword;
-  IdHashCRC32: TIdHashCRC32;
-begin
-  IdHashCRC32 := nil;
-  f := nil;
-  try
-    IdHashCRC32 := TIdHashCRC32.create;
-    f := TFileStream.create( path, fmOpenRead or fmShareDenyWrite ) ;
-    value := IdHashCRC32.HashValue( f ) ;
-    result := inttohex( value, 8 ) ;
-  finally
-    f.free;
-    IdHashCRC32.free;
-  end;
-end;
 
 procedure TSecureFtpServer.IdFTPServerXCommandXCRC( ASender: TIdCommand ) ;
 // note, this is made up, and not defined in any rfc.
@@ -188,75 +181,10 @@ begin
   result := (SrvShape.Brush.Color = cllime);
 end;
 
-function replace_chr(schr, dchr : CHAR; InStr : String) : String;
-  Var
-    S : String;
-begin
-  S := InStr;
-  While POS(schr, S) > 0 do
-    if dchr = '' then
-      delete(S, POS(schr, S), 1)
-      else
-      S[POS(schr, S)] := dchr;
-  result := s;
-end;
-
-function check_controlsum_key(vkey : string) : boolean;
-  var
-    r         : string;
-    i         : integer;
-    cntrlsum  : DWORD;
-    value     : DWORD;
-    cmpsumstr : string;
-begin
-  cntrlsum     := 0;
-  r            := copy(replace_chr('-', chr(0), vkey),  1, 4*5);
-  cmpsumstr    := copy(replace_chr('-', chr(0), vkey), 21, 1*5);
-  result       := false;
-  if Length(vkey) <> 25 then exit;
-  For I := 1 to 4 do
-   begin
-     value    := StrToInt(Copy(r, (i-1)*5 + 1, 5));
-     cntrlsum := cntrlsum + value xor $AA;
-   end;
-  result := (Copy(Inttostr(cntrlsum), 1, 5) = cmpsumstr);
-end;
-
 procedure TSecureFtpServer.generate_key;
-  var
-    s        : string;
-    r        : string;
-    a        : byte;
-    i        : integer;
-    value    : DWORD;
-    cntrlsum : DWORD;
 begin
-{}
-  Randomize;
-  for i:= 1 to 4 do
-  begin
-    a := Random(65535);
-    r := inttostr(a);
-    r := FormatMaskText('00000', r);
-    r := replace_chr(' ', '0', r);
-    WHILE (POS('0', r) > 0)
-      do r[POS('0', r)] := inttostr(Random(65535))[1];
-    s := s + r;
-    if I < 4
-     then
-       s := s + '-';
-  end;
-  cntrlsum     := 0;
-  r            := replace_chr('-', chr(0), s);
-  For I := 1 to 4 do
-   begin
-     value    := StrToInt(Copy(r, (i-1)*5 + 1, 5));
-     cntrlsum := cntrlsum + value xor $AA;
-   end;
-  EditKey.Text := s + '-' + Copy(Inttostr(cntrlsum), 1, 5);
-{}
+  EditKey.Text := GenerateKey;
 end;
-
 
 function TSecureFtpServer.check_init_server_key : boolean;
 begin
@@ -275,354 +203,121 @@ begin
   result := (Shape1.Brush.Color = cllime);
 end;
 
-function encrypt_string(InStr : String) : String;
-  Var
-    S    : String;
-    I    : Integer;
-    J, K : Integer;
-    KEY  : Byte;
-begin
-  S      := InStr;
-  K      := Length(vKeyStr);
-  result := S;
-  if K = 0 then exit;
-  For I := 1 To Length(InStr) do
-  begin
-    J    := I MOD K;
-    KEY  := ORD(vKeyStr[J + 1]);
-    if ((S[I] <> '/') and (S[I] <> '\') and (S[I] <> '.')) then
-      begin
-        if (ORD(S[I]) XOR KEY = 0)        or (ORD(S[I]) = 0) or
-           (ORD(S[I]) XOR KEY = ORD('/')) or (ORD(S[I]) = ORD('/')) or
-           (ORD(S[I]) XOR KEY = ORD('\')) or (ORD(S[I]) = ORD('\')) or
-           (ORD(S[I]) XOR KEY = ORD('.')) or (ORD(S[I]) = ORD('.')) or
-           (ORD(S[I]) XOR KEY = ORD(' ')) or (ORD(S[I]) = ORD(' ')) or
-           (ORD(S[I]) XOR KEY = ORD('+')) or (ORD(S[I]) = ORD('+')) or
-           (ORD(S[I]) XOR KEY = ORD('-')) or (ORD(S[I]) = ORD('-')) or
-           (ORD(S[I]) XOR KEY = ORD('*')) or (ORD(S[I]) = ORD('*')) or
-           (ORD(S[I]) XOR KEY = ORD('&')) or (ORD(S[I]) = ORD('&')) or
-           (ORD(S[I]) XOR KEY = ORD(':')) or (ORD(S[I]) = ORD(':')) or
-           (ORD(S[I]) XOR KEY = ORD(';')) or (ORD(S[I]) = ORD(';')) or
-           (ORD(S[I]) XOR KEY = 39)       or (ORD(S[I]) = 39) or
-           (ORD(S[I]) XOR KEY = 16)       or (ORD(S[I]) = 16) or
-           (ORD(S[I]) XOR KEY = 13)       or (ORD(S[I]) = 13) or
-           (ORD(S[I]) XOR KEY = 10)       or (ORD(S[I]) = 10) or
-           (ORD(S[I]) XOR KEY = 46)       or (ORD(S[I]) = 46) or
-           (ORD(S[I]) XOR KEY = 09)       or (ORD(S[I]) = 09) or
-           (LENGTH( CHR( ORD(S[I]) XOR KEY ) ) = 0)
-        then
-        else
-          S[I] := CHR(ORD(S[I]) XOR KEY);
-      end;
-  end;
-  result := S;
-end;
-
-function decrypt_string(InStr : String) : String;
-begin
-  result := encrypt_string( InStr );
-end;
-
-function encrypt_foldername(Path : String; InStr : String) : String;
-  Var
-    S    : String;
-begin
-  if InStr = '/' then
-  begin
-    result := InStr;
-    exit;
-  end;
-  S      := encrypt_string( Path + InStr );
-  while pos('\', S) > 0 do
-   delete(S, 1, pos('\', S));
-  while ((pos('/', S) > 0) and (pos('/', S) <> length(S))) do
-    delete(S, 1, pos('/', S));
-  result := S;
-end;
-
-function decrypt_path_dir(VDirectory : String) : string;
-  var
-    split_path  : string;
-    old_split   : string;
-    save_str    : string;
-    result_path : string;
-    curr_path   : string;
-begin
-  curr_path     := VDirectory;
-  split_path    := '';
-  while pos('/', curr_path) > 0 do
-  begin
-    old_split  := split_path;
-    split_path := split_path + copy( curr_path, 1, pos('/', curr_path));
-
-    save_str   := split_path;
-    delete(save_str, 1, Length(old_split));
-    if Length(old_split) > 2 then
-      if old_split[1] = '/' then
-        delete(old_split, 1, 1);
-    old_split  := encrypt_foldername(RootPath + old_split, save_str);
-    result_path := result_path + old_split;
-
-    delete( curr_path, 1, pos('/', curr_path));
-  end;
-  result    := split_path;
-
-  if Length(result_path) > 2 then
-    if result_path[1] = '/' then
-      delete(result_path, 1, 1);
-
-  result := result_path;
-end;
-
-procedure TSecureFtpServer.IdFTPServerXListDirectory(ASender: TIdFTPServerThread;
-  const APath: String; ADirectoryListing: TIdFTPListItems);
-
-  procedure AddlistItem( aDirectoryListing: TIdFTPListItems; Filename: string; ItemType: TIdDirItemType; size: int64; date: tdatetime ) ;
-  var
-    listitem: TIdFTPListItem;
-  begin
-    listitem := aDirectoryListing.Add;
-    listitem.ItemType         := ItemType;
-    listitem.FileName         := Filename;
-    listitem.OwnerName        := 'anonymous';
-    listitem.GroupName        := 'all';
-    listitem.OwnerPermissions := 'rwx';
-    listitem.GroupPermissions := 'rwx';
-    listitem.UserPermissions  := 'rwx';
-    listitem.Size             := size;
-    listitem.ModifiedDate     := date;
-  end;
-
-  var 
-    F              : TSearchRec;
-    res            : integer;
-    curr_path      : string;
-    fsize          : INT64;
-    fname          : string;
-begin
-  Listbox1.Items.Add('ListDirectory: ' +  APath);
-  ADirectoryListing.Clear;
-
-    curr_path := decrypt_path_dir(APath);
-    SecureFtpServer.ListBox1.Items.Add( 'List Directory: ' + RootPath + curr_path + '*' );
-
-    res := FindFirst(RootPath + curr_path + '*', faDirectory, F);
-    while res = 0 do
-      begin
-        if ((f.attr and faDirectory) = faDirectory) and
-            (F.Name <> '.') and
-            (F.Name <> '..') then
-        begin
-          fname := encrypt_foldername(RootPath + curr_path, F.Name);
-          fsize := GetFileSize_Int64(TranslatePath(curr_path + F.Name, RootPath));
-          AddlistItem( ADirectoryListing, fname, ditDirectory, fsize, FileDateToDateTime( f.Time ) );
-        end;
-        res := FindNext(F);
-      end;
-
-     res := FindFirst(RootPath + curr_path + '*', faAnyFile, F);
-     while res = 0 do
-     begin
-       if ((f.attr and faDirectory) <> faDirectory) and
-          (F.Name <> '.') and
-          (F.Name <> '..') then
-         begin
-           fname := encrypt_string(F.Name);
-           fsize := GetFileSize_Int64(TranslatePath(curr_path + F.Name, RootPath));
-           AddlistItem( ADirectoryListing, fname, ditFile, fsize, FileDateToDateTime( f.Time ) );
-         end;
-       res := FindNext(F);
-     end;
-
-end;
-
 procedure TSecureFtpServer.Button1Click(Sender: TObject);
 begin
   CloseAllConnection;
-  IdFTPServerX := TIdFTPServer.Create(self);
-  IdFTPServerX.DefaultDataPort   := vDataPort;
-  IdFTPServerX.DefaultPort       := vPort;
-  IdFTPServerX.OnConnect         := IdFTPServerXConnect;
-  IdFTPServerX.OnUserLogin       := IdFTPServerXUserLogin;
-  IdFTPServerX.OnChangeDirectory := IdFTPServerXChangeDirectory;
-  IdFTPServerX.OnListDirectory   := IdFTPServerXListDirectory;
-  IdFTPServerX.OnRetrieveFile    := IdFTPServerXRetrieveFile;
-  IdFTPServerX.OnStoreFile       := IdFTPServerXStoreFile;
-  IdFTPServerX.OnStatus          := IdFTPServerXStatus;
-  IdFTPServerX.OnRenameFile      := IdFTPServerXRenameFile;
+  if not Assigned(ProcessorServer) then
+    ProcessorServer := TFTPProcessorServer.Create(RootPath);
+  IdFTPServerX                     := TIdFTPServer.Create(self);
+  IdFTPServerX.DefaultDataPort     := vDataPort;
+  IdFTPServerX.DefaultPort         := vPort;
+{-- begin initializing event handlers --}  
+  IdFTPServerX.OnConnect           := ProcessorServer.FTPServerXConnect;
+  IdFTPServerX.OnUserLogin         := ProcessorServer.FTPServerXUserLogin;
+  IdFTPServerX.OnChangeDirectory   := ProcessorServer.FTPServerXChangeDirectory;
+  IdFTPServerX.OnListDirectory     := ProcessorServer.FTPServerXListDirectory;
+  IdFTPServerX.OnRetrieveFile      := ProcessorServer.FTPServerXRetrieveFile;
+  IdFTPServerX.OnStoreFile         := ProcessorServer.FTPServerXStoreFile;
+  IdFTPServerX.OnStatus            := ProcessorServer.FTPServerXStatus;
+  IdFTPServerX.OnRenameFile        := ProcessorServer.FTPServerXRenameFile;
+  IdFTPServerX.OnMakeDirectory     := ProcessorServer.FTPServerXMakeDirectory;
+  IdFTPServerX.OnRemoveDirectory   := ProcessorServer.FTPServerXRemoveDirectory;
+  IdFTPServerX.OnDisconnect        := ProcessorServer.FTPServerXDisconnect;
   with IdFTPServerX.CommandHandlers.add do
   begin
     Command := 'XCRC';
     OnCommand := IdFTPServerXCommandXCRC;
   end;
+  ProcessorServer.OnConnect         := OnConnect;
+  ProcessorServer.OnWriteDataEvent  := OnWriteDataEvent;
+  ProcessorServer.OnChangeDirectory := OnChangeDirectory;
+{-- end initializing event handlers --}
   check_init_server_path(edit1.Text);
   check_init_server_work;
   check_init_server_key;
+  IdFTPServerX.EmulateSystem     := ftpsUNIX;
   IdFTPServerX.Active            := true;
   sleep(1000);
   if IdFTPServerX.Active then
     ListBox1.Items.Add('FTP Server Started On Port: ' + inttostr(vPort) + ' At: ' + TimeToStr(Time) + ' ' + DateToStr( Date ));
+  Timer1.Enabled                 := IdFTPServerX.Active;
   Button1.Enabled                := not IdFTPServerX.Active;
-  Button2.Enabled                := IdFTPServerX.Active;
+  BtnStop.Enabled                := IdFTPServerX.Active;
   check_init_server_work;
   check_init_server_path(edit1.Text);
   check_init_server_key;
 end;
 
 procedure TSecureFtpServer.CloseAllConnection;
- var
-   a : integer;
 begin
+  Timer1.Enabled := false;
+  Application.ProcessMessages;
+  sleep(1000);
+  Application.ProcessMessages;
   try
     if Assigned(IdFTPServerX) then
     begin
-      IdFTPServerX.TerminateWaitTime := 5000;
-      IdFTPServerX.Active := false;
-      Application.ProcessMessages;
-      a := 10;
-      sleep(a);
-      while (IdFTPServerX.Active and (a <= 5000))
-      do
-       begin
-         Application.ProcessMessages;
-         sleep(100);
-         Application.ProcessMessages;
-         a := a + 100; // Protected to suspension's
-       end;
-      IdFTPServerX        := nil;
+      try
+        try
+          if Assigned(ProcessorServer) then
+            ProcessorServer.Destroy;
+        except
+        end;
+      finally
+        IdFTPServerX.OnConnect         := nil;
+        IdFTPServerX.OnUserLogin       := nil;
+        IdFTPServerX.OnChangeDirectory := nil;
+        IdFTPServerX.OnListDirectory   := nil;
+        IdFTPServerX.OnRetrieveFile    := nil;
+        IdFTPServerX.OnStoreFile       := nil;
+        IdFTPServerX.OnStatus          := nil;
+        IdFTPServerX.OnRenameFile      := nil;
+        ProcessorServer                := nil;
+        try
+          IdFTPServerX.Destroy;
+        finally
+          IdFTPServerX                   := nil;
+        end;  
+      end;
     end;
   except
-    
+    on E:Exception do
+      E.Free;
   end;
 end;
 
-procedure TSecureFtpServer.Button2Click(Sender: TObject);
+procedure TSecureFtpServer.BtnStopClick(Sender: TObject);
 begin
-  CloseAllConnection;
-  Button1.Enabled     := true;
-  Button2.Enabled     := false;
-  vConnectCount       := 0;
-  ListBox1.Items.Add('FTP Server Terminated ' + inttostr(vPort) + ' At: ' + TimeToStr(Time) + ' ' + DateToStr( Date ));
-  check_init_server_path(edit1.Text);
-  check_init_server_work;
-  check_init_server_key;
-end;
-
-procedure TSecureFtpServer.IdFTPServerXStatus(ASender: TObject;
-  const AStatus: TIdStatus; const AStatusText: String);
-begin
-  Listbox1.Items.Add( 'OnStatus: '  + '[' + IdStati[AStatus] + ']' + AStatusText );
-end;
-
-procedure TSecureFtpServer.IdFTPServerXConnect(AThread: TIdPeerThread);
-begin
-  Listbox1.Items.Add( 'OnConnect: ' +   AThread.Connection.Socket.SocksInfo.LocalName );
-end;
-
-procedure TSecureFtpServer.IdFTPServerXUserLogin(ASender: TIdFTPServerThread;
-  const AUsername, APassword: String; var AAuthenticated: Boolean);
-begin
-  Listbox1.Items.Add('UserName: ' + '"' + AUsername + '"' + '; APassword: ' + '"' + APassword + '"');
-  AAuthenticated := true;
-  vConnectCount := vConnectCount + 1;
-end;
-
-procedure TSecureFtpServer.IdFTPServerXChangeDirectory(ASender: TIdFTPServerThread;
-  var VDirectory: String);
-  var curr_path : string;
-begin
-  curr_path := VDirectory;
-  while pos('\', curr_path) > 0 do
-   delete(curr_path, 1, pos('\', curr_path));
-  VDirectory := curr_path;
-  Listbox1.Items.Add('ChangeDirectory: ' + '"' + decrypt_path_dir( curr_path ) + '"' + '; UserName: ' + '"' + ASender.Username + '"');
-end;
-
-function TSecureFtpServer.TranslatePath( const APathname, homeDir: string ) : string;
-function SlashToBackSlash( const str: string ) : string;
-var
-  a: dword;
-begin
-  result := str;
-  for a := 1 to length( result ) do
-    if result[a] = '/' then
-      result[a] := '\';
-end;
-var
-  tmppath: string;
-begin
-  result := SlashToBackSlash( homeDir ) ;
-  tmppath := SlashToBackSlash( APathname ) ;
-  if homedir = '/' then
-  begin
-    result := tmppath;
-    exit;
+  try
+    CloseAllConnection;
+    Application.ProcessMessages;
+  finally
+    try
+      Button1.Enabled     := true;
+      Application.ProcessMessages;
+    finally
+      try
+        BtnStop.Enabled     := false;
+        Application.ProcessMessages;
+      finally
+        try
+          ListBox1.Items.Add('FTP Server Terminated ' + inttostr(vPort) + ' At: ' + TimeToStr(Time) + ' ' + DateToStr( Date ));
+          Application.ProcessMessages;
+        finally
+          check_init_server_path(edit1.Text);
+          check_init_server_work;
+          check_init_server_key;
+        end;
+      end;
+    end;  
   end;
-
-  if length( APathname ) = 0 then
-    exit;
-  if result[length( result ) ] = '\' then
-    result := copy( result, 1, length( result ) - 1 ) ;
-
-  if length(tmppath) > 0 then
-  begin
-    if tmppath[1] <> '\' then
-      result := result + '\';
-  end else
-    result := result + '\';
-    
-  result := result + tmppath;
-end;
-
-procedure TSecureFtpServer.IdFTPServerXStoreFile(ASender: TIdFTPServerThread;
-  const AFileName: String; AAppend: Boolean; var VStream: TStream);
-  var
-   path_dir  : string;
-   vLocFileN : string;
-   FileName  : String;
-begin
-  path_dir  := decrypt_path_dir( AFileName );
-  vLocFileN := AFileName;
-  while ((pos('/', vLocFileN) > 0) and (pos('/', vLocFileN) <> length(vLocFileN))) do
-    delete(vLocFileN, 1, pos('/', vLocFileN));
-  vLocFileN := path_dir + decrypt_string( vLocFileN );
-  FileName  := RootPath +  vLocFileN;
-
-  Listbox1.Items.Add('StoreFile: ' + '"' + FileName + '"');
-  if FileExists( FileName ) and AAppend then
-  begin
-    VStream := TFileStream.create(FileName, fmOpenWrite or fmShareExclusive);
-    VStream.Seek( 0, soFromEnd ) ;
-  end
-  else
-  begin
-    VStream := TFTP_StoreFileStream.Create(FileName);
-//    VStream := TFileStream.create(FileName, fmCreate or fmShareExclusive );
-  end;
-end;
-
-procedure TSecureFtpServer.IdFTPServerXRetrieveFile(ASender: TIdFTPServerThread;
-  const AFileName: String; var VStream: TStream);
-  var FileStream : TFileStream;
-  var
-   path_dir  : string;
-   vLocFileN : string;
-begin
-  path_dir  := decrypt_path_dir( AFileName );
-  vLocFileN := AFileName;
-  while ((pos('/', vLocFileN) > 0) and (pos('/', vLocFileN) <> length(vLocFileN))) do
-    delete(vLocFileN, 1, pos('/', vLocFileN));
-  vLocFileN := path_dir + decrypt_string( vLocFileN );
-
-  Listbox1.Items.Add('RetrieveFile: ' + RootPath +  vLocFileN );
-  FileStream := TFileStream.Create(RootPath + vLocFileN, fmopenread or fmShareDenyWrite);
-  VStream    := FileStream;
 end;
 
 procedure TSecureFtpServer.FormCreate(Sender: TObject);
 begin
-  IdFTPServerX := nil;
-  RootPath := edit1.Text;
+  IdFTPServerX    := nil;
+  ProcessorServer := nil;
+  RootPath        := edit1.Text;
   if length(RootPath) > 0 then
     if RootPath[length(RootPath)] <> '\' then
       RootPath := RootPath + '\';
@@ -641,12 +336,12 @@ end;
 
 procedure TSecureFtpServer.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
- CanClose := (vConnectCount = 0);
-end;
-
-procedure TSecureFtpServer.IdFTPServerXDisconnect(AThread: TIdPeerThread);
-begin
-  vConnectCount := vConnectCount - 1;
+ CanClose := true;
+ if Assigned(ProcessorServer) then
+ begin
+   with ProcessorServer.Server.Connections do
+     CanClose := (Count = 0);
+ end;
 end;
 
 procedure TSecureFtpServer.SpinEdit1Change(Sender: TObject);
@@ -658,18 +353,10 @@ begin
   end;
 end;
 
-procedure TSecureFtpServer.IdFTPServerXRenameFile(ASender: TIdFTPServerThread;
-  const ARenameFromFile, ARenameToFile: String);
-begin
- {}
- Listbox1.Items.Add( 'RenameFile: ' + 'From: "' + ARenameFromFile + '" To: "' + ARenameToFile + '"');
- RenameFile(RootPath + ARenameFromFile, RootPath + ARenameToFile);
- {}
-end;
-
 procedure TSecureFtpServer.Button3Click(Sender: TObject);
 begin
 {}
+  OpenDialog1.Options := [ofNoValidate];
   OpenDialog1.Filter := '*.*|*.*';
   if not OpenDialog1.Execute then exit;
 {}
@@ -686,6 +373,16 @@ end;
 procedure TSecureFtpServer.Button4Click(Sender: TObject);
 begin
   generate_key;
+end;
+
+procedure TSecureFtpServer.Timer1Timer(Sender: TObject);
+begin
+  if Assigned(ProcessorServer) then
+  begin
+    if Assigned(ProcessorServer.Server) then
+    with ProcessorServer.Server do
+      Panel4.Caption := 'Кол-во открытых соединений: ' + inttostr(Connections.count);
+  end;
 end;
 
 end.
