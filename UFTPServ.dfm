@@ -82,7 +82,7 @@ object SecureFtpServer: TSecureFtpServer
           Height = 13
           Caption = 'PATH'
         end
-        object Shape1: TShape
+        object KeyShape: TShape
           Left = 4
           Top = 20
           Width = 15

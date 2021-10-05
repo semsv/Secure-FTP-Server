@@ -33,7 +33,7 @@ type
     Label2: TLabel;
     Label3: TLabel;
     EditKey: TMaskEdit;
-    Shape1: TShape;
+    KeyShape: TShape;
     PathShape: TShape;
     SrvShape: TShape;
     Label4: TLabel;
@@ -77,7 +77,8 @@ uses UFTPStream, UStrCalculate;
 procedure TSecureFtpServer.OnConnect(Connect : TFTPConnection);
 begin
   Listbox1.Items.Add( 'OnConnect: ' + Connect.PeerIP );
-  Connect.RootPath := ExtractFilePath(ParamStr(0)) + '[VIRTUAL]\'
+  if KeyShape.Brush.Color = cllime then
+    Connect.RootPath := ExtractFilePath(ParamStr(0)) + '[VIRTUAL]\'
 end;
 
 procedure TSecureFtpServer.OnChangeDirectory(var VDirectory: String);
@@ -194,13 +195,13 @@ begin
   if (Length(replace_chr('0', chr(0), vKeyStr)) > 0)  and
      check_controlsum_key(vKeyStr)
    then
-     Shape1.Brush.Color := cllime else
+     KeyShape.Brush.Color := cllime else
   if Length(vKeyStr) = 0
    then
-     Shape1.Brush.Color := clSilver
+     KeyShape.Brush.Color := clSilver
    else
-     Shape1.Brush.Color := clRed;
-  result := (Shape1.Brush.Color = cllime);
+     KeyShape.Brush.Color := clRed;
+  result := (KeyShape.Brush.Color = cllime);
 end;
 
 procedure TSecureFtpServer.Button1Click(Sender: TObject);
